@@ -1,9 +1,16 @@
-import 'dotenv/config';   // Load .env trước tất cả mọi thứ — phải là dòng đầu tiên
+import 'dotenv/config';
 import app from './app.js';
+import connectDB from './config/db.js';
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
-});
+// Chờ DB kết nối xong rồi mới listen — tránh nhận request khi DB chưa sẵn sàng
+const start = async () => {
+  await connectDB();
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📦 Environment: ${process.env.NODE_ENV}`);
+  });
+};
+
+start();
