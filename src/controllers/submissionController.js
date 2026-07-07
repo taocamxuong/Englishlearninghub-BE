@@ -1,12 +1,28 @@
-import { Exercise, Lesson, Submission, SubmissionAnswer, Topic } from '../models/index.js';
+import { Exercise, Lesson, Submission, SubmissionAnswer, Topic, UserProgress } from '../models/index.js';
 import AppError from '../utils/AppError.js';
+import { updateStreak } from '../utils/streak.js';
 
 export const submit = async (req, res, next) => {
   try {
     const answerList = req.body.answerList;
     const lessonId = req.body.lessonId;
 
-    console.log(answerList);
+    // console.log(answerList);
+
+    let did = await UserProgress.findOne({
+        userId: req.user._id,
+        lessonId: lessonId
+    })
+    if (!did) {
+        const newUP = {
+            userId: req.user._id,
+            lessonId: lessonId,
+            status: 'not_started',
+            score: 0,
+            attempts: 0,
+        }
+        did = await UserProgress.create(newUP);
+    }
     
     if (!(Array.isArray(answerList) && answerList.length > 0)) {
       throw new AppError('answerList is required', 400);
@@ -35,6 +51,10 @@ export const submit = async (req, res, next) => {
     let totalP = 0;
     let ttlEarnedP = 0;
     let corCnt = 0;
+    let stt = 'failed';
+    let eXp = 0;
+    const submittedAt = new Date();
+
 
     for (let i = 0; i < exercises.length; i++) {
         totalP += exercises[i].points;
@@ -45,29 +65,15 @@ export const submit = async (req, res, next) => {
         lessonId: lesson._id,
       });
 
-    const sub = {
-        userId: req.user._id,
-        lessonId: lesson._id,
-        lessonTitle: lesson.title,
-        lessonSlug: lesson.slug,
-        topicTitle: topic.title,
-        topicSlug: topic.slug,
-        correctCount: 0,
-        totalCount: exercises.length,
-        totalPoints: totalP,
-        earnedPoints: 0,
-        score: 0,
-        status: 'failed',
-        passThreshold: lesson.passThreshold ?? 70,
-        earnedXp: 0,
-        attemptNumber: previousAttempts + 1,
-    }
-
-    const submission = await Submission.create(sub);
+    // count so lan nop ngay hom nay -> neu = 0 -> tang streak / > 0 thi thoi
+    // ~moi 00:00 hang ngay,~ goi func (dem so lan submit hom qua -> neu = 0 -> reset streak)
 
     for (let i = 0; i < answerList.length; i++) {
-        //const ex = await Exercise.findById(answerList[i].exerciseId);
         const ex = exercises.find(e => String(e._id) === String(answerList[i].exerciseId));
+        // let ex = null;
+        // for (let j = 0; j < exercises.length; j++) {
+        //     if (exercises[j]._id == answerList[i].exerciseId) {ex = exercises[j]}
+        // }
         if (!ex) {
             throw new AppError('Exercise not found', 404);
         }
@@ -87,7 +93,6 @@ export const submit = async (req, res, next) => {
         }
 
         const subAns = {
-            submissionId: submission._id,
             exerciseId: answerList[i].exerciseId,
             exerciseType: ex.type,
             question: ex.question,
@@ -102,18 +107,65 @@ export const submit = async (req, res, next) => {
         subAnsList.push(subAns);
     }   
 
-    submission.correctCount = corCnt;
-    submission.earnedPoints = ttlEarnedP;
-    submission.score = totalP > 0 ? Math.round((ttlEarnedP / totalP) * 100) : 0;
-    if (submission.score >= submission.passThreshold) submission.status = 'passed';
-    await submission.save();
+    const sc = totalP > 0 ? Math.round((ttlEarnedP / totalP) * 100) : 0;
+    let update = { attempts: did.attempts + 1, score: sc }
 
+    const passedTime = await Submission.countDocuments({
+        userId: req.user._id,
+        lessonId: lessonId,
+        status: 'passed'
+    })
+    if (sc >= lesson.passThreshold ?? 70) {
+        stt = 'passed'
+        if (passedTime == 0) {
+            eXp = lesson.xpReward
+            update.status = 'completed'
+            update.completedAt = submittedAt
+        }
+    } else {
+        if (passedTime == 0) {
+            update.status = 'in_progress'
+        }
+    }
+
+    await UserProgress.findByIdAndUpdate(did._id, update)
+
+    const sub = {
+        userId: req.user._id,
+        lessonId: lesson._id,
+        lessonTitle: lesson.title,
+        lessonSlug: lesson.slug,
+        topicTitle: topic.title,
+        topicSlug: topic.slug,
+        correctCount: corCnt,
+        totalCount: exercises.length,
+        totalPoints: totalP,
+        earnedPoints: ttlEarnedP,
+        score: sc,
+        status: stt,
+        passThreshold: lesson.passThreshold ?? 70,
+        earnedXp: eXp,
+        attemptNumber: previousAttempts + 1,
+    }
+
+    const submission = await Submission.create(sub);
+    for (let i = 0; i < subAnsList.length; i++)
+        subAnsList[i].submissionId = submission._id;
     const submissionAnswerList = await SubmissionAnswer.create(subAnsList);
+    // const a = UserProgress.updateOne(
+    //     {   userId: req.user._id,
+    //         lessonId: lessonId,
+    //     }, 
+    //     {
+    //         status: 'in_progress'
+    //     }
+    // )
+    const streakResult = await updateStreak(req.user._id, submittedAt);
 
 
     res.status(201).json({
       success: true,
-      data: { submission, submissionAnswerList},
+      data: { submission, submissionAnswerList, streak: streakResult },
     });
   } catch (err) {
     next(err);

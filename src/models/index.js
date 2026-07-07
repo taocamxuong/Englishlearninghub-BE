@@ -1,5 +1,5 @@
 // Export tập trung tất cả models để import gọn:
-//   import { User, Topic, Lesson } from '../models/index.js';
+//  import { User, Topic, Lesson } from '../models/index.js';
 export { default as User } from './User.js';
 export { default as Topic } from './Topic.js';
 export { default as Lesson } from './Lesson.js';

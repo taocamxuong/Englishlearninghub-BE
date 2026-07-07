@@ -31,6 +31,8 @@ const userSchema = new mongoose.Schema(
     avatarUrl: { type: String, default: '' },
     xp: { type: Number, default: 0, min: 0 },
     streak: { type: Number, default: 0, min: 0 },
+    /** Ngày calendar cuối cùng được tính streak (timezone Asia/Ho_Chi_Minh). null = chưa từng học. */
+    lastStreakDate: { type: Date, default: null },
     role: {
       type: String,
       enum: ['user', 'admin'],

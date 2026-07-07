@@ -16,6 +16,7 @@ import {
   Exercise,
   UserProgress,
 } from '../models/index.js';
+import { ensureUserProgressForAllLessons } from '../utils/userProgress.js';
 import {
   DEMO_USERS,
   TOPICS,
@@ -106,6 +107,13 @@ async function run() {
 
   console.log('\n📚 Content:');
   await seedContent();
+
+  console.log('\n📈 User progress (eager):');
+  const users = await User.find().select('_id email');
+  for (const user of users) {
+    await ensureUserProgressForAllLessons(user._id);
+    console.log(`   ✅ Progress rows for ${user.email}`);
+  }
 
   console.log('\n✨ Done.');
   console.log('   Login demo: student@demo.com / 123456');

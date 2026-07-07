@@ -1,6 +1,7 @@
 import { User } from '../models/index.js';
 import { signToken } from '../utils/jwt.js';
 import AppError from '../utils/AppError.js';
+import { ensureUserProgressForAllLessons } from '../utils/userProgress.js';
 
 /**
  * POST /api/auth/register
@@ -18,6 +19,7 @@ export const register = async (req, res, next) => {
     if (exists) throw new AppError('Email already registered', 409);
 
     const user = await User.create({ email:req.body.email, password:req.body.password, name, level });
+    await ensureUserProgressForAllLessons(user._id);
     const token = signToken(user);
 
     res.status(201).json({
@@ -47,6 +49,7 @@ export const login = async (req, res, next) => {
     const ok = await user.comparePassword(password);
     if (!ok) throw new AppError('Invalid email or password', 401);
 
+    await ensureUserProgressForAllLessons(user._id);
     const token = signToken(user);
 
     res.json({

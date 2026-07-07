@@ -1,9 +1,19 @@
-import { Lesson } from '../models/index.js';
+import { Lesson, UserProgress } from '../models/index.js';
 import AppError from '../utils/AppError.js';
+import {
+  attachGuestProgress,
+  attachUserProgress,
+  ensureUserProgressForAllLessons,
+} from '../utils/userProgress.js';
+
+const LESSON_LIST_FIELDS =
+  'topicId title slug description order xpReward passThreshold isActive';
 
 /**
  * GET /api/lesson
  * Query: ?topicId=<ObjectId>
+ * Guest: mỗi lesson kèm progress mặc định not_started.
+ * Có token: merge UserProgress của user (eager — đã tạo sẵn mọi lesson).
  */
 export const getLessons = async (req, res, next) => {
   try {
@@ -11,11 +21,29 @@ export const getLessons = async (req, res, next) => {
     if (req.query.topicId) filter.topicId = req.query.topicId;
 
     const lessons = await Lesson.find(filter)
-      .select('topicId title slug description content order xpReward passThreshold isActive')
+      .select(LESSON_LIST_FIELDS)
       .sort({ order: 1 })
       .lean();
 
-    res.json({ success: true, data: { lessons } });
+    if (!req.user) {
+      return res.json({
+        success: true,
+        data: { lessons: attachGuestProgress(lessons) },
+      });
+    }
+
+    await ensureUserProgressForAllLessons(req.user._id);
+
+    const lessonIds = lessons.map((l) => l._id);
+    const progresses = await UserProgress.find({
+      userId: req.user._id,
+      lessonId: { $in: lessonIds },
+    }).lean();
+
+    res.json({
+      success: true,
+      data: { lessons: attachUserProgress(lessons, progresses) },
+    });
   } catch (err) {
     next(err);
   }
@@ -27,9 +55,9 @@ export const getLessons = async (req, res, next) => {
  */
 export const getLessonBySlug = async (req, res, next) => {
   try {
-    const slug = req.params.slug.toLowerCase().trim();
+    const sl = req.params.slug.toLowerCase().trim();
 
-    const lesson = await Lesson.findOne({ slug, isActive: true })
+    const lesson = await Lesson.findOne({ slug: sl, isActive: true })
       .select('topicId title slug description content order xpReward passThreshold isActive')
       .lean();
 
