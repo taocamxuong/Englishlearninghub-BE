@@ -1,4 +1,5 @@
 import { User } from '../models/index.js';
+import AppError from '../utils/AppError.js';
 
 /**
  * GET /api/user — chỉ admin (danh sách user, không trả password).
@@ -12,7 +13,7 @@ export const getUsers = async (req, res, next) => {
     next(err);
   }
 };
-//get user by id
+
 export const getUserById = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
@@ -21,8 +22,44 @@ export const getUserById = async (req, res, next) => {
     next(err);
   }
 };
-//update user profile
-// export const updateUser = async (req, res, next) => {
-//   //update email, name
 
-// }
+/** PATCH /api/user — cập nhật name và birthday (dob) của user đang đăng nhập. */
+export const updateUser = async (req, res, next) => {
+  try {
+    const { name, birthday } = req.body;
+    const updatefield = {};
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) throw new AppError('name cannot be empty', 400);
+      updatefield.name = trimmed;
+    }
+
+    if (birthday !== undefined) {
+      if (birthday === null || birthday === '') {
+        updatefield.dob = null;
+      } else {
+        const bday = new Date(birthday);
+        if (Number.isNaN(bday.getTime())) {
+          throw new AppError('Invalid birthday format', 400);
+        }
+        updatefield.dob = bday;
+      }
+    }
+
+    if (Object.keys(updatefield).length === 0) {
+      throw new AppError('No fields to update', 400);
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updatefield, {
+      new: true,
+      runValidators: true,
+    }).select('-password');
+
+    if (!user) throw new AppError('User not found', 404);
+
+    res.json({ success: true, data: { user } });
+  } catch (err) {
+    next(err);
+  }
+};

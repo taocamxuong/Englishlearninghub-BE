@@ -23,6 +23,8 @@ const userSchema = new mongoose.Schema(
       trim: true,
       maxlength: 100,
     },
+    /** Date of birth — ngày sinh (lưu mốc 00:00 UTC của ngày đó). */
+    dob: { type: Date, default: null },
     level: {
       type: String,
       enum: ['beginner', 'elementary'],
