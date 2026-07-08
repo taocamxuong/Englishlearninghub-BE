@@ -63,3 +63,37 @@ export const updateUser = async (req, res, next) => {
     next(err);
   }
 };
+
+export const updatePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword, confirmnewP } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmnewP) {
+      throw new AppError('currentPassword, newPassword and confirmnewP are required', 400);
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) throw new AppError('User not found', 404);
+
+    const ok = await user.comparePassword(currentPassword);
+    if (!ok) {
+      throw new AppError('Incorrect current password', 400);
+    }
+
+    if (newPassword === currentPassword) {
+      throw new AppError('New password must be diffent from current password.', 400);
+
+    }
+
+    if (newPassword !== confirmnewP) {
+      throw new AppError('New password and new-password confirmation must be the same.', 400);
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ success: true, data: { message: 'Password updated' } });
+  } catch (err) {
+    next(err);
+  }
+};
