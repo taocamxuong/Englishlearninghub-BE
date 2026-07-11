@@ -40,6 +40,10 @@ const userSchema = new mongoose.Schema(
       enum: ['user', 'admin'],
       default: 'user',
     },
+    /** Email mới đang chờ xác minh OTP. */
+    pendingEmail: { type: String, default: null, lowercase: true, trim: true },
+    emailChangeOtpHash: { type: String, select: false, default: null },
+    emailChangeOtpExpires: { type: Date, default: null },
   },
   { timestamps: true }
 );
