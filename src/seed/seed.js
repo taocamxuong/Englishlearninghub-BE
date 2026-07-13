@@ -55,13 +55,9 @@ async function seedUsers() {
 
 async function seedContent() {
   const topicCount = await Topic.countDocuments();
-  if (topicCount > 0 && !shouldReset) {
+  if (topicCount > 0) {
     console.log('⏭️  Topics already exist. Use: npm run seed:reset');
     return;
-  }
-
-  if (shouldReset || topicCount > 0) {
-    await clearLearningData();
   }
 
   const topicIdBySlug = new Map();
@@ -101,6 +97,10 @@ async function seedContent() {
 async function run() {
   console.log(shouldReset ? '🌱 Seed (reset mode)\n' : '🌱 Seed\n');
   await connectDB();
+
+  if (shouldReset) {
+    await clearLearningData();
+  }
 
   console.log('👤 Users:');
   await seedUsers();

@@ -132,8 +132,8 @@ export const requestEmailChange = async (req, res, next) => {
       throw new AppError('Incorrect current password', 400);
     }
 
-    const taken = await User.findOne({ email: normalized, _id: { $ne: user._id } });
-    if (taken) throw new AppError('Email already registered', 409);
+    const taken = await User.findOne({ email: normalized});
+    if (taken) throw new AppError('Email already registered', 409); 
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
 
