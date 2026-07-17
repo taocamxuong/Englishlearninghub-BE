@@ -8,3 +8,4 @@ export { default as Exercise } from './Exercise.js';
 export { default as UserProgress } from './UserProgress.js';
 export { default as Submission } from './Submission.js';
 export { default as SubmissionAnswer } from './SubmissionAnswer.js';
+export { default as WordBankEntry } from './WordBankEntry.js';

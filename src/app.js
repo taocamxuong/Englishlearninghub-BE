@@ -10,6 +10,7 @@ import vocalRoutes from './routes/vocalRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import exerciseRoutes from './routes/exerciseRoutes.js';
 import submissionRoutes from './routes/submissionRoutes.js';
+import wordbankRoutes from './routes/wordbankRoutes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/vocal',vocalRoutes);
 app.use('/api/user',userRoutes);
 app.use('/api/exercise',exerciseRoutes);
 app.use('/api/submit', submissionRoutes);
+app.use('/api/wordbank', wordbankRoutes);
 // --- 404 handler: request đến route không tồn tại ---
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
